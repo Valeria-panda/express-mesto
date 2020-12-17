@@ -1,13 +1,45 @@
-const path = require('path');
-const getDataFromFile = require('../helpers/files');
+const Card = require('../models/card');
 
-const dataPath = path.join(__dirname, '..', 'data', 'cards.json');
+
+const createCard = (req, res) => {
+  const { _id } = req.user;
+  const { name, link } = req.body;
+
+  Card.create({ name, link, owner: _id })
+    .then((card) => res.send({ data: card }))
+    .catch(err => res.status(404).send({ message: 'Такой карточки не существует' }));
+};
+
+
+const getAllCards = (req, res) => {
+  Card.find({})
+    .then((card) => res.status(200).send({ data: card }))
+    .catch(() => res.status(500).send({ message: 'На сервере произошла ошибка' }));
+};
 
 const getCards = (req, res) => {
-    return getDataFromFile(dataPath)
+  Card.find({})
     .then(cards => res.status(200).send(cards))
-    .catch(err => res.status(500).send(err));
+    .catch(err => res.status(500).send({ message: 'Произошла ошибка' }));
 }
 
 
-module.exports = getCards;
+const likeCard = (req, res) => {
+ Card.findByIdAndUpdate(req.params._id,
+  { $addToSet: { likes: req.user._id }}, // добавить _id в массив, если его там нет
+  { new: true })
+  .then((likes) => res.send({ data: likes }))
+  .catch(err => res.status(500).send({ message: 'Произошла ошибка' }));
+}
+
+const dislikeCard = (req, res) => {
+ Card.findByIdAndUpdate(req.params._id,
+  { $pull: { likes: req.user._id } }, // убрать _id из массива
+  { new: true })
+  .then((likes) => res.send({ data: likes }))
+  .catch(err => res.status(500).send({ message: 'Произошла ошибка' }));
+}
+
+
+
+module.exports = { getCards, createCard, getAllCards, likeCard, dislikeCard };
