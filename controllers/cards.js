@@ -11,12 +11,6 @@ const createCard = (req, res) => {
 };
 
 
-const getAllCards = (req, res) => {
-  Card.find({})
-    .then((card) => res.status(200).send({ data: card }))
-    .catch(() => res.status(500).send({ message: 'На сервере произошла ошибка' }));
-};
-
 const getCards = (req, res) => {
   Card.find({})
     .then(cards => res.status(200).send(cards))
@@ -42,4 +36,4 @@ const dislikeCard = (req, res) => {
 
 
 
-module.exports = { getCards, createCard, getAllCards, likeCard, dislikeCard };
+module.exports = { getCards, createCard, likeCard, dislikeCard };
