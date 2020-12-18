@@ -7,7 +7,7 @@ const createCard = (req, res) => {
 
   Card.create({ name, link, owner: _id })
     .then((card) => res.send({ data: card }))
-    .catch(err => res.status(404).send({ message: 'Такой карточки не существует' }));
+    .catch(err => res.status(500).send({ message: 'Произошла ошибка' }));
 };
 
 
