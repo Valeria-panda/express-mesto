@@ -24,28 +24,39 @@ const createUser = (req, res) => {
   const { name, about } = req.body;
   User.create({ name, about })
     .then(user => res.send({ data: user }))
-    .catch(err => res.status(500).send({ message: 'Произошла ошибка' }));
+    .catch((err) => {
+      if(err.name === 'ValidationError'){
+        res.status(400).send({ message: 'Переданные данные не валидны' });
+      }else{
+        res.status(500).send({ message: 'Произошла ошибка на сервере' });
+      }
+    })
 };
-  // return User.countDocuments()
-  // .then(count => {
-  //   return User.create({id: count, ...req.body})
-  //   .then(user => res.status(200).send(user))
-  //   .catch(err => res.status(500).send({ message: 'Произошла ошибка' }));
-  // })
- // };
 
 const updateUser = (req, res) => {
   const { name, about, avatar } = req.body;
 
   User.findByIdAndUpdate(req.user._id, name, about, avatar )
   .then(user => res.send({ data: user }))
-  .catch(err => res.status(500).send({ message: 'Произошла ошибка' }));
+  .catch((err) => {
+    if (err.name === 'ValidationError') {
+      res.status(400).send({ message: 'Переданы некорректные данные' });
+    } else {
+      res.status(500).send({ message: 'На сервере произошла ошибка' });
+    }
+  });
 };
 
 const updateAvatar = (req, res) => {
   const { avatar } = req.body;
   User.findByIdAndUpdate(req.user._id, avatar)
   .then(updAvatar => res.send({ data: updAvatar }))
-  .catch(err => res.status(500).send({ message: 'Произошла ошибка' }));
+  .catch((err) => {
+    if (err.name === 'ValidationError') {
+      res.status(400).send({ message: 'Переданы некорректные данные' });
+    } else {
+      res.status(500).send({ message: 'На сервере произошла ошибка' });
+    }
+  });
 };
 module.exports = { getUsers, getProfile, createUser, updateUser, updateAvatar };
