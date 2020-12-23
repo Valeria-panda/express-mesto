@@ -1,7 +1,8 @@
-# Проект Mesto фронтенд + бэкенд
+# express-приложение Mesto (фронтенд + бэкенд)
 
 * Проект подключен к [MongoDB](https://www.mongodb.com/cloud/atlas)
 
+* Сервер проекта развернут с помощью пакета npm [express](https://www.npmjs.com/package/express)
 
 ## Функциональность проекта
 
