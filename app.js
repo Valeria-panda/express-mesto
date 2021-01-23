@@ -1,13 +1,25 @@
+require('dotenv').config();
 const express = require('express');
 const app = express();
 const path = require('path');
-const usersRouter = require('./routes/users.js');
-const cardsRouter = require('./routes/cards.js');
+
+const users = require('./routes/users.js');
+const cards = require('./routes/cards.js');
+
+const auth = require('./middlewares/auth');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
-const { PORT = 3000 } = process.env;
 
-// подключаемся к серверу mongo
+const NotFoundError = require('./errors/notFoundError.js');
+const NotAuthorizedError = require('./errors/notAuthorizedError');
+const { celebrate, Joi } = require('celebrate');
+
+const { createUser, login } = require('./controllers/users');
+const { requestLogger, errorLogger } = require('./middlewares/logger');
+const { PORT = 3000 } = process.env;
+const { errors } = require('celebrate');
+
+// подключаемся к серверу mongon
 mongoose.connect('mongodb://localhost:27017/mongodb', {
   useNewUrlParser: true,
   useCreateIndex: true,
@@ -16,22 +28,56 @@ mongoose.connect('mongodb://localhost:27017/mongodb', {
 
 app.use(bodyParser.json());
 
-app.use((req, res, next) => {
-  req.user = {
-    _id: '5fd908b14e2754110bf6c47a'
-  };
-  next();
+app.get('/crash-test', () => {
+  setTimeout(() => {
+    throw new Error('Сервер сейчас упадёт');
+  }, 0);
 });
 
-app.use(express.static(path.join(__dirname, 'public')))
-app.use('/', usersRouter);
-app.use('/', cardsRouter);
-app.use('/', (req, res) => {
+app.use(requestLogger); // подключаем логгер запросов
+
+app.post('/signin', celebrate({
+  body: Joi.object().keys({
+    email: Joi.string().required().email(),
+    password: Joi.string().required().min(4),
+  }),
+}), login);
+
+app.post('/signup', celebrate({
+  body: Joi.object().keys({
+    email: Joi.string().required().email(),
+    password: Joi.string().required().min(4),
+  }),
+}), createUser);
+
+
+app.use('/', auth, users);
+app.use('/', auth, cards);
+
+
+app.use(errorLogger); // подключаем логгер ошибок
+
+
+// celebrate errors handler
+app.use(errors());
+
+app.use(() => {
+  throw new NotFoundError({ message: 'Запрашиваемый ресурс не найден' });
+});
+
+app.use((err, req, res, next) => {
+  // если у ошибки нет статуса, выставляем 500
+  const { statusCode = 500, message } = err;
+
   res
-    .status(404)
-    .send({ message: 'Запрашиваемый ресурс не найден' });
+    .status(statusCode)
+    .send({
+      // проверяем статус и выставляем сообщение в зависимости от него
+      message: statusCode === 500
+        ? 'На сервере произошла ошибка'
+        : message
+    });
 });
-
 
 app.listen(PORT, () => {
     console.log(`App listen on port ${PORT}`);

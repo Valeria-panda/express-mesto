@@ -1,62 +1,110 @@
 const User = require('../models/user');
+const bcrypt = require('bcryptjs'); // импортируем bcrypt.
+const jwt = require('jsonwebtoken');
+const BadRequestError = require('../errors/badRequestError');
+const NotFoundError = require('../errors/notFoundError');
+const AlreadyExistError = require('../errors/alreadyExistError');
+const NotAuthorizedError = require('../errors/notAuthorizedError');
+const { NODE_ENV, JWT_SECRET } = process.env;
 
-
-const getUsers = (req, res) => {
+module.exports.getUsers = (req, res, next) => {
   User.find({})
-    .then(users => res.status(200).send(users))
-    .catch(err => res.status(404).send({message: 'пользователя не существует'}));
+  .then((users) => res.send({ data: users }))
+  .catch(next);
 }
 
-const getProfile = (req, res) => {
-  const { id } = req.params;
-  User.findOne({id})
-    .then((users) => {
-        if(!users){
-            return res.status(404).send({message: 'нет пользователя с таким id'})
-        }
-        return res.status(200).send(users);
-    })
-
-    .catch(err => res.status(500).send({ message: 'Произошла ошибка' }));
+module.exports.getProfile = (req, res, next) => {
+  User.findOne({ _id: req.params.userId })
+  .then((user) => {
+    if (!user) {
+      // если такого пользователя нет
+      throw new NotFoundError('Нет пользователя с таким id');
+    }
+    res.send(user);
+  })
+  .catch(next); // добавили catch
 }
 
-const createUser = (req, res) => {
-  const { name, about } = req.body;
-  User.create({ name, about })
-    .then(user => res.send({ data: user }))
+module.exports.createUser = (req, res, next) => {
+
+  const { name, about, email, password } = req.body;
+
+  bcrypt.hash(password, 10)
+    .then( hash => User.create({
+      name,
+      about,
+      avatar,
+      email,
+      password: hash, // записываем хеш в базу
+    }))
+
     .catch((err) => {
-      if(err.name === 'ValidationError'){
-        res.status(400).send({ message: 'Переданные данные не валидны' });
-      }else{
-        res.status(500).send({ message: 'Произошла ошибка на сервере' });
-      }
+      if (err.name === 'MongoError' || err.code === 11000) {
+        throw new AlreadyExistError({ message: 'Пользователь с таким email уже зарегистрирован' });
+      } else next(err);
     })
+
+    .then((user) => res.status(201).send({
+      data: {
+        name: user.name, about: user.about, avatar, email: user.email,
+      },
+    }))
+
+    .catch(next);
+
 };
 
-const updateUser = (req, res) => {
-  const { name, about, avatar } = req.body;
+module.exports.login = (req, res, next) => {
 
-  User.findByIdAndUpdate(req.user._id, name, about, avatar )
-  .then(user => res.send({ data: user }))
+  const { email, password } = req.body;
+
+  return User.findUserByCredentials(email, password)
+  .then((user) => {
+    // create token
+    const token = jwt.sign(
+      { _id: user._id},
+      NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret',
+      { expiresIn: '7d'},
+    );
+    // return token
+    res.send({token});
+  })
+  .catch(next);
+}
+
+module.exports.updateUser = (req, res, next) => {
+  const { name, about} = req.body;
+
+  User.findByIdAndUpdate( req.user._id, name, about )
+  .orFail(() => new NotFoundError({ message: 'Нет пользователя с таким id' }))
   .catch((err) => {
-    if (err.name === 'ValidationError') {
-      res.status(400).send({ message: 'Переданы некорректные данные' });
-    } else {
-      res.status(500).send({ message: 'На сервере произошла ошибка' });
+    if (err instanceof NotFoundError) {
+      throw err;
     }
-  });
+    throw new BadRequestError({ message: `Указаны некорректные данные при обновлении пользователя: ${err.message}` });
+  })
+  .then((user) => res.send({ data: user }))
+  .catch(next);
 };
 
-const updateAvatar = (req, res) => {
+module.exports.updateAvatar = (req, res) => {
+
   const { avatar } = req.body;
+
   User.findByIdAndUpdate(req.user._id, avatar)
-  .then(updAvatar => res.send({ data: updAvatar }))
-  .catch((err) => {
-    if (err.name === 'ValidationError') {
-      res.status(400).send({ message: 'Переданы некорректные данные' });
-    } else {
-      res.status(500).send({ message: 'На сервере произошла ошибка' });
-    }
-  });
+
+    .orFail(() => new NotFoundError({ message: 'Нет пользователя с таким id' }))
+    .catch((err) => {
+      if (err instanceof NotFoundError) {
+        throw err;
+      }
+      throw new BadRequestError({ message: `Указаны некорректные данные при обновлении аватара: ${err.message}` });
+    })
+    .then((updAvatar) => res.send({ data: updAvatar }))
+    .catch(next);
 };
-module.exports = { getUsers, getProfile, createUser, updateUser, updateAvatar };
+
+
+
+
+
