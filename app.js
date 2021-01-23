@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const app = express();
 const path = require('path');
-
+const cookieParser = require('cookie-parser');
 const users = require('./routes/users.js');
 const cards = require('./routes/cards.js');
 
@@ -19,6 +19,7 @@ const { requestLogger, errorLogger } = require('./middlewares/logger');
 const { PORT = 3000 } = process.env;
 const { errors } = require('celebrate');
 
+app.use(cookieParser());
 // подключаемся к серверу mongon
 mongoose.connect('mongodb://localhost:27017/mongodb', {
   useNewUrlParser: true,

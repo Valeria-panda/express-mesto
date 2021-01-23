@@ -55,22 +55,25 @@ module.exports.createUser = (req, res, next) => {
 };
 
 module.exports.login = (req, res, next) => {
-
   const { email, password } = req.body;
 
   return User.findUserByCredentials(email, password)
-  .then((user) => {
-    // create token
-    const token = jwt.sign(
-      { _id: user._id},
-      NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret',
-      { expiresIn: '7d'},
-    );
-    // return token
-    res.send({token});
-  })
-  .catch(next);
-}
+    .then((user) => {
+      const token = jwt.sign(
+        { _id: user._id },
+        NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret',
+        { expiresIn: '7d' },
+      );
+      res
+        .cookie('jwt', token, {
+          maxAge: 3600000 * 24 * 7,
+          httpOnly: true,
+          sameSite: true,
+        })
+        .send({ message: 'Успешная авторизация' });
+    })
+    .catch(next);
+};
 
 module.exports.updateUser = (req, res, next) => {
   const { name, about} = req.body;

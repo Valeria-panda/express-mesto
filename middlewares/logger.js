@@ -2,25 +2,24 @@ const winston = require('winston');
 const expressWinston = require('express-winston');
 // добавить в гитигнор
 // *.log
+const path = require('path');
 
-// создадим логгер запросов
+const dirPath = path.join(__dirname, '../logs');
 const requestLogger = expressWinston.logger({
-    transports: [
-      new winston.transports.File({ filename: 'request.log' }),
-    ],
-    format: winston.format.json(),
+  transports: [
+    new winston.transports.File({ filename: path.join(dirPath, 'request.log') }),
+  ],
+  format: winston.format.json(),
 });
 
-// логгер ошибок
 const errorLogger = expressWinston.errorLogger({
-    transports: [
-      new winston.transports.File({ filename: 'error.log' }),
-    ],
-    format: winston.format.json(),
+  transports: [
+    new winston.transports.File({ filename: path.join(dirPath, 'error.log') }),
+  ],
+  format: winston.format.json(),
 });
-
 
 module.exports = {
-    requestLogger,
-    errorLogger,
+  requestLogger,
+  errorLogger,
 };
